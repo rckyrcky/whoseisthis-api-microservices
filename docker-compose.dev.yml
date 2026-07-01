@@ -1,0 +1,101 @@
+services:
+  users-db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: users
+    volumes:
+      - users-pgdata:/var/lib/postgresql
+  reports-db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: reports
+    volumes:
+      - reports-pgdata:/var/lib/postgresql
+  kafka:
+    image: apache/kafka:4.2.1
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+      # broker
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      # controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # listener
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # replication
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      # partition
+      KAFKA_NUM_PARTITIONS: 3
+    volumes:
+      - kafkadata:/var/lib/kafka
+  users:
+    depends_on:
+      - kafka
+      - users-db
+    build:
+      context: ./users
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      DATABASE_URL: jdbc:postgresql://users-db:5432/users
+      PG_USER: ${PGUSER}
+      PG_PASSWORD: ${PGPASSWORD}
+      UPSTASH_REDIS_HOST: ${UPSTASH_REDIS_HOST}
+      UPSTASH_REDIS_PASSWORD: ${UPSTASH_REDIS_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      GATEWAY_TOKEN: ${GATEWAY_TOKEN}
+  reports:
+    depends_on:
+      - kafka
+      - reports-db
+    build:
+      context: ./reports
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      DATABASE_URL: jdbc:postgresql://reports-db:5432/reports
+      PG_USER: ${PGUSER}
+      PG_PASSWORD: ${PGPASSWORD}
+      UPSTASH_REDIS_HOST: ${UPSTASH_REDIS_HOST}
+      UPSTASH_REDIS_PASSWORD: ${UPSTASH_REDIS_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      GATEWAY_TOKEN: ${GATEWAY_TOKEN}
+  gateway:
+    depends_on:
+      - users
+      - reports
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      UPSTASH_REDIS_HOST: ${UPSTASH_REDIS_HOST}
+      UPSTASH_REDIS_PASSWORD: ${UPSTASH_REDIS_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      GATEWAY_TOKEN: ${GATEWAY_TOKEN}
+      AUTH_SERVICE_URL: http://users:8081/internal
+      USER_SERVICE_URL: http://users:8081/internal
+      REPORT_SERVICE_URL: http://reports:8082/internal
+volumes:
+  users-pgdata:
+  reports-pgdata:
+  kafkadata:

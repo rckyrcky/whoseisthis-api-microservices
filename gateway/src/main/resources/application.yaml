@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: gateway
+
+  webflux:
+    base-path: /api
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  data:
+    redis:
+      host: ${UPSTASH_REDIS_HOST}
+      password: ${UPSTASH_REDIS_PASSWORD}
+      port: 6379
+      ssl:
+        enabled: true
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  issuer: whoseisthis
+
+gateway-token: ${GATEWAY_TOKEN}
+auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081/internal}
+user-service-url: ${USER_SERVICE_URL:http://localhost:8081/internal}
+report-service-url: ${REPORT_SERVICE_URL:http://localhost:8082/internal}
+
+springdoc:
+  api-docs:
+    path: /documentation
+  swagger-ui:
+    path: /docs

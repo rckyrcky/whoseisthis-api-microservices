@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: users
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${PG_USER}
+    password: ${PG_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+  data:
+    redis:
+      host: ${UPSTASH_REDIS_HOST}
+      password: ${UPSTASH_REDIS_PASSWORD}
+      port: 6379
+      ssl:
+        enabled: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: user-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+server:
+  port: 8081
+  forward-headers-strategy: framework
+  servlet:
+    context-path: /internal
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  issuer: whoseisthis
+
+gateway-token: ${GATEWAY_TOKEN}
